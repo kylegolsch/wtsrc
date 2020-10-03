@@ -63,6 +63,14 @@ class WtsrcModel:
         indent = "  "
         s = "File: {}".format(WtsrcModel.model_file_name()) + "\n"
         s += "Aliases:\n"
+        alias_list = []
+        max_len = 0
         for alias in sorted (self.aliases.keys()):
-            s += indent + "{alias} => {url}".format(alias=alias, url=self.aliases[alias])
+            max_len = max(max_len, len(alias))
+            alias_list.append((alias, self.aliases[alias]))
+        for alias in alias_list:
+            name = alias[0]
+            url = alias[1]
+            spaces = " " * (max_len - len(name))
+            s += indent + "{alias} {s}=> {url}\n".format(alias=name, s=spaces, url=url)
         return s

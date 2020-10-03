@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="wtsrc",
-    version="1.1.0",
+    version="1.2.0",
     author="Kyle Golsch",
     author_email="kyle@sagelab.com",
     description="For automating some manual processes with wtsrc",
