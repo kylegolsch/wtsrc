@@ -1,7 +1,15 @@
 import click
-import shlex
-import subprocess
+import os
+import pexpect
 from wtsrc.WtsrcModel import WtsrcModel
+from wtsrc.WtsrcUtils import find_tsrc_root
+
+output_bytes = []
+
+def read(fd):
+    data = os.read(fd, 1024)
+    output_bytes.append(data)
+    return data
 
 
 @click.group()
@@ -9,34 +17,18 @@ def run():
     pass
 
 
-
 def run_command(command):
-    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, universal_newlines=True)
-    while process.poll() is None:
-        line = process.stdout.readline()    # This blocks until it receives a newline.
-        if(isinstance(line, bytes)):
-            print(line.decode())
-        else:
-            print(line)
+    '''Executes a command on the command line and shows the results'''
+    child = pexpect.spawn(command)
+    child.interact()
 
-'''
-def run_command(command):
-    process = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE)
-    while True:
-        output = process.stdout.readline()
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print(output.strip())
-    rc = process.poll()
-    return rc
-'''
 
 @run.command()
 @click.argument('alias', type=str)
 @click.option('--branch', type=str, default=None, help="which branch to clone")
 @click.option('--group', type=str, default=None, help="which group to clone")
-def init(alias:str, branch:str, group:str):
+@click.option('-s', default=False, is_flag=True, help="set this flag if you want a shallow copy")
+def init(alias:str, branch:str, group:str, s):
 
     model = WtsrcModel.load()
     url = model.get_alias_url(alias)
@@ -44,16 +36,16 @@ def init(alias:str, branch:str, group:str):
     if(url == None):
         print("The alias '{}' is not known".format(alias))
     else:
-        cmd = "tsrc init {r}{b}{u}".format(r=url,
+        cmd = "tsrc init {r}{b}{u}{s}".format(r=url,
                                            b=" --branch {}".format(branch) if branch else "",
-                                           u=" --group {}".format(group) if group else "")
+                                           u=" --group {}".format(group) if group else "",
+                                           s=" -s" if s else "")
         run_command(cmd)
 
 
 @run.command()
 @click.argument('alias', type=str)
 @click.option('--url', type=str, help="the url for the repository")
-#@click.option('-e', '--evaluate', type=click.STRING, help='Execute specified commands string and exit')
 def add_alias(alias:str, url:str):
     '''Will try to add an alias and save the model'''
 
@@ -77,7 +69,36 @@ def remove_alias(alias: str):
 
 
 @run.command()
+def diff():
+    '''Shows which files have been modified'''
+    cmd = "tsrc foreach git diff-index HEAD"
+    run_command(cmd)
+
+
+@run.command()
 def show():
     '''Prints the saved model'''
     model = WtsrcModel.load()
     print(str(model))
+
+
+@run.command()
+def summary():
+    cmd = 'tsrc status'
+    run_command(cmd)
+
+
+@run.command()
+@click.argument('repo-path', type=str)
+def status(repo_path):
+    root = find_tsrc_root()
+    if not root:
+        print("You must call from within a tsrc directory")
+    else:
+        if repo_path == 'all':
+            cmd = 'tsrc foreach git status'
+            run_command(cmd)
+        else:
+            os.chdir(os.path.join(root, repo_path))
+            cmd = "git status"
+            run_command(cmd)

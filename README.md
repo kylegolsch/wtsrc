@@ -35,6 +35,25 @@ Same format as tsrc except for an alias is entered instead of the url
 wtsrc init alias [--branch branch_name] [--group group_name]
 ```
 
+## Checking for status:
+
+```sh
+# print high level summary (branch name, and is dirty)
+# directly wraps tsrc status
+wtsrc summary
+
+#print git status for each repository
+wtsrc status all
+
+#print the git status for one repo
+wtsrc status path/in/workspace
+
+#print all the differences
+wtsrc diff
+
+```
+
+
 # Credits
 Author: Kyle Golsch (kyle@sagelab.com)
 
