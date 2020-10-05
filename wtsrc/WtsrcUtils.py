@@ -5,7 +5,7 @@ TSRC_DIRECTORY = ".tsrc"
 TSRC_MANIFEST_DIR = "manifest"
 
 def find_tsrc_directory():
-    '''Tries to walk up the directory tree until .tsrc directory is found'''
+    '''Tries to walk up the directory tree until the folder containing .tsrc directory is found'''
 
     tsrc_dir = None # assume we can't find the directory
     try:

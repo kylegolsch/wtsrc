@@ -1,0 +1,19 @@
+# commands allows the user to attach a command line operation to any command
+#  cmd-name:
+#    pre: "some comand line action"
+#    post: "some comand line action"
+# pre/post can be any command line value that is valid on your os - python scripts are shown as example only
+commands:
+
+  # init cannot have a pre-action because the manifest repo containing this yml file happens during the init command
+  init:
+    post: "python scripts/initPostAction.py"
+
+  # wtsrc checks for the exit status (must be 0) - otherwise the command is prevented from running if the pre-script exits with an error code
+  show:
+    pre: "python scripts/exampleFail.py"
+
+# the actions section lets you define actions that can be called from any location in the tsrc workspace
+actions:
+  sample-action:
+    action: "python scripts/sampleAction.py"

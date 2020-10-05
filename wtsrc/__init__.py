@@ -31,14 +31,6 @@ def perhaps_run_action(action, heading):
     os.chdir(restore_cwd)
 
 
-def do_init(manifest_url:str, branch:str, group:str, s):
-    cmd = "tsrc init {r}{b}{u}{s}".format(r=manifest_url,
-                                          b=" --branch {}".format(branch) if branch else "",
-                                          u=" --group {}".format(group) if group else "",
-                                          s=" -s" if s else "")
-    run_command(cmd)
-
-
 @click.group()
 @click.option('-v', default=False, is_flag=True, help="if you want everything printed")
 @click.pass_context
@@ -52,14 +44,13 @@ def run(ctx, v):
 
     # tell the model which commands can't have pre-actions because the manifest isn't cloned before the command
     WtsrcProjectModel.register_pre_action_not_possible_cmd('init')
-    WtsrcProjectModel.register_pre_action_not_possible_cmd('init-alias')
 
     if WtsrcProjectModel.pre_action_allowed_for_cmd(ctx.invoked_subcommand):
         model = WtsrcProjectModel.load()
         pre_action = model.get_command_pre_action(ctx.invoked_subcommand)
         perhaps_run_action(pre_action, 'Running pre-action:')
     else:
-        log.print("Info: pre-actions are enabled because the manifest repo hasn't been cloned yet")
+        log.print("Info: pre-actions are disabled because the manifest repo hasn't been cloned yet")
 
 
 @run.resultcallback()
@@ -73,46 +64,30 @@ def post_command(ctx, result, **kwargs):
 
 
 @run.command()
-@click.argument('repo-url', type=str)
+@click.option('--alias', type=str, default=None, required=False, help="the name of the alias to the manifest repo url")
+@click.option('--url', type=str, default=None, required=False, help="the url of the tsrc manifest repo")
 @click.option('--branch', type=str, default=None, help="which branch to clone (without is master)")
 @click.option('--group', type=str, default=None, help="which group to clone (without is all repos)")
 @click.option('-s', default=False, is_flag=True, help="set this flag if you want a shallow copy")
-def init(manifest_url:str, branch:str, group:str, s):
+def init(alias:str, url:str, branch:str, group:str, s):
     '''Clone the manifest and all repos'''
-    do_init(manifest_url, branch, group, s)
 
+    manifest_url = None
+    if alias and url:
+        log.fatal("You cannot pass both an alias and a url, choose one option or the other")
+    elif alias:
+        model = WtsrcGlobalModel.load()
+        manifest_url = model.get_alias_url(alias)
+        if(manifest_url == None):
+            log.fatal("The alias '{}' is not known".format(alias))
+    else:
+        manifest_url = url
 
-@run.command()
-@click.argument('alias', type=str)
-@click.option('--branch', type=str, default=None, help="which branch to clone (without is master)")
-@click.option('--group', type=str, default=None, help="which group to clone (without is all repos)")
-@click.option('-s', default=False, is_flag=True, help="set this flag if you want a shallow copy")
-def init_alias(alias:str, branch:str, group:str, s):
-    '''Clone the manifest and all repos by its alias'''
-    model = WtsrcGlobalModel.load()
-    url = model.get_alias_url(alias)
-
-    if(url == None):
-        log.fatal("The alias '{}' is not known".format(alias))
-
-    do_init(url, branch, group, s)
-
-
-@run.command()
-@click.argument('alias', type=str)
-@click.argument('url', type=str)
-def add_alias(alias:str, url:str):
-    '''Will try to add an alias and save the model'''
-
-    if(alias is None or alias.isidentifier() == False):
-        log.fatal("'{}' is not a valid alias".format(alias))
-
-    if(url is None):
-        log.fatal("You must specify the url with --url")
-
-    model = WtsrcGlobalModel.load()
-    model.add_alias(alias, url)
-    model.save()
+    cmd = "tsrc init {r}{b}{u}{s}".format(r=manifest_url,
+                                          b=" --branch {}".format(branch) if branch else "",
+                                          u=" --group {}".format(group) if group else "",
+                                          s=" -s" if s else "")
+    run_command(cmd)
 
 
 @run.command()
@@ -176,6 +151,20 @@ def mergetool(repo_path):
     chdir_to_repo(repo_path)
     cmd = "git mergetool"
     run_command(cmd)
+
+
+@run.command(context_settings=dict(
+    ignore_unknown_options=True,
+))
+@click.argument('command', type=str)
+@click.argument('args', type=str, required=False, nargs=-1)
+def manifest(command, args):
+    if(command=="git"):
+        chdir_to_manifest_dir()
+        cmd = "git " + " ".join(args)
+        run_command(cmd)
+    else:
+        log.fatal("Unknown sub command '{}'".format(command))
 
 
 @run.command()

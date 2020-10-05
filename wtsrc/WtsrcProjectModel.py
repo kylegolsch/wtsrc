@@ -113,8 +113,8 @@ class WtsrcProjectModel:
         if name in self.commands:
             log.fatal("'{c}' command is defined in {f} more than once".format(c=name, f=WTSRC_FILE))
 
-        if WtsrcProjectModel.known_commands and name in WtsrcProjectModel.known_commands is False:
-            log.warning("{f} defines command '{c}' that is not a wtsrc command".format(f=WTSRC_FILE, c=name))
+        if WtsrcProjectModel.known_commands and not name in WtsrcProjectModel.known_commands:
+            log.warning("{f} defines actions for command '{c}' that is not a wtsrc command".format(f=WTSRC_FILE, c=name))
 
         self.commands[name] = WtsrcProjectModel.Command.create_from_dict(name, cmd)
 
@@ -148,6 +148,7 @@ class WtsrcProjectModel:
         '''Tells the model that there is a command with the specified name'''
         if not WtsrcProjectModel.known_commands:
             WtsrcProjectModel.known_commands = {}
+        # the following line has a warning because known_commands was initially set to None - to avoid adding a flag when no commands are registered
         WtsrcProjectModel.known_commands[cmd_name] = True
 
 
