@@ -1,8 +1,18 @@
-# commands allows the user to attach a command line operation to any command
+# commands allows the user to attach a command line operation to any command - has 'pre' and 'post'
+# if the 'pre' action fails - meaning the exit code is not 0 - the command will not be executed
+# 
+#commands:
 #  cmd-name:
-#    pre: "some comand line action"
-#    post: "some comand line action"
+#    pre: "some command line action"
+#    post: "some command line action"
 # pre/post can be any command line value that is valid on your os - python scripts are shown as example only
+#
+# an example action - has only 'action'
+#
+#actions:
+#  action-name:
+#    action: "some command line action"
+
 commands:
 
   # init cannot have a pre-action because the manifest repo containing this yml file happens during the init command

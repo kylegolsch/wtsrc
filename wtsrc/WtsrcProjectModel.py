@@ -69,6 +69,7 @@ class WtsrcProjectModel:
     instance = None
     known_commands = None
     pre_action_not_possible_cmds = {}
+    post_action_not_possible_cmds = {}
 
     def __init__(self, data:dict):
         self.commands = {}
@@ -118,8 +119,11 @@ class WtsrcProjectModel:
 
         self.commands[name] = WtsrcProjectModel.Command.create_from_dict(name, cmd)
 
-        if WtsrcProjectModel.pre_action_allowed_for_cmd(name) == False and self.commands[name].pre_action:
+        if name in WtsrcProjectModel.pre_action_not_possible_cmds and self.commands[name].pre_action:
             log.warning("{f} defines a pre-action for command '{c}' that cannot be executed by wtsrc".format(f=WTSRC_FILE, c=name))
+
+        if name in WtsrcProjectModel.post_action_not_possible_cmds and self.commands[name].post_action:
+            log.warning("{f} defines a post-action for command '{c}' that cannot be executed by wtsrc".format(f=WTSRC_FILE, c=name))
 
 
     def get_command_pre_action(self, cmd_name:str):
@@ -159,9 +163,10 @@ class WtsrcProjectModel:
 
 
     @staticmethod
-    def pre_action_allowed_for_cmd(cmd_name):
-        '''Returns if it is allowed to run the pre-action for this command'''
-        return (cmd_name in WtsrcProjectModel.pre_action_not_possible_cmds) == False
+    def register_post_action_not_possible_cmd(cmd_name):
+        '''Tells the model that it isn't possible to run the post-command action on this command'''
+        WtsrcProjectModel.post_action_not_possible_cmds[cmd_name] = True
+
 
     @classmethod
     def load(cls):

@@ -4,9 +4,12 @@ import setuptools
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+
+from wtsrc.version import __version__
+
 setuptools.setup(
     name="wtsrc",
-    version="1.4.0",
+    version=__version__,
     author="Kyle Golsch",
     author_email="kyle@sagelab.com",
     description="For automating some manual processes with wtsrc",

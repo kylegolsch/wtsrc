@@ -63,22 +63,35 @@ def obj_dump(obj, name='obj'):
     print("%s.%s = %r" % (name, attr, getattr(obj, attr)))
 
 
-def chdir_to_repo(repo_path):
+def chdir_to_repo(repo_path, overide_manifest=True):
     '''Tries to change to the repo directory'''
+
+    special_paths={}
+    if(overide_manifest):
+        special_paths['manifest'] = os.path.join(TSRC_DIRECTORY, TSRC_MANIFEST_DIR)
+
+    # find the workspace root and change directories to that
     root = find_tsrc_root()
     if not root:
         log.fatal("You must call from within a tsrc directory")
-        exit()
+    os.chdir(root)
 
-    dir = os.path.join(root, repo_path)
-    if(not os.path.exists(dir)):
+    # override the path if needed
+    if(repo_path in special_paths):
+        new_path = special_paths[repo_path]
+        if(os.path.exists(repo_path)):
+            log.warning("'{0}' path was overriden to '{1}'".format(repo_path, new_path))
+        repo_path = new_path
+
+    if(not os.path.exists(repo_path)):
         log.fatal("The repo path '{}' was not found".format(repo_path))
-        exit()
 
-    os.chdir(dir)
+    os.chdir(repo_path)
 
 
 def chdir_to_manifest_dir():
+    '''Tries to change directories to where the manifest file is located'''
+
     manifest_dir = find_manifest_directory()
     if not manifest_dir:
         log.fatal("You must call from within a tsrc directory")
