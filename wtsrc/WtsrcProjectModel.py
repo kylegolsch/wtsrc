@@ -3,31 +3,40 @@ import wtsrc.WtsrcLogger as log
 from wtsrc.WtsrcSettings import WTSRC_FILE
 from wtsrc.WtsrcUtils import find_file_in_manifest_dir, find_manifest_directory, obj_dump
 
+def get_from_dict(dict, field, field_description, is_required, type=None):
+
+    if field in dict:
+        data = dict[field]
+        if type and not isinstance(data, type):
+            log.fatal("{0} is was not the expected type".format(field_description))
+    elif is_required:
+        log.fatal(log.fatal("{0} is required, but not found".format(field_description)))
+    else:
+        data = None
+
+    return data
+
 
 class WtsrcProjectModel:
 
-
     class Action:
-        def __init__(self, name, action):
+        def __init__(self, name, action, comment):
             self.name = name
             self.action = action
+            self.comment = comment
 
 
         @classmethod
         def create_from_dict(cls, name:str, data:dict):
-            action = None
-
-            if 'action' in data:
-                action = data['action']
-                if not isinstance(action, str):
-                    log.fatal("'action' for action '{}' must be a string".format(name))
-
-            return WtsrcProjectModel.Action(name, action)
+            action = get_from_dict(data, 'action', 'action field for {}'.format(name), True, str)
+            comment = get_from_dict(data, 'comment', 'comment field for {}'.format(name), False, str)
+            return WtsrcProjectModel.Action(name, action, comment)
 
 
         def log(self):
-            log.print("name: {}".format(self.name))
+            log.print("name: {}".format(self.name), color='cyan')
             log.increase_indent(" -")
+            log.print("comment: {}".format(self.comment))
             log.print("action:  {}".format(self.action))
             log.decrease_indent()
 
@@ -41,24 +50,13 @@ class WtsrcProjectModel:
 
         @classmethod
         def create_from_dict(cls, name:str, data:dict):
-            pre = None
-            post = None
-
-            if 'pre' in data:
-                pre = data['pre']
-                if not isinstance(pre, str):
-                    log.fatal("Command pre-action for command '{}' must be a string".format(name))
-
-            if 'post' in data:
-                post = data['post']
-                if not isinstance(post, str):
-                    log.fatal("Command post-action for command '{}' must be a string".format(name))
-
+            pre = get_from_dict(data, 'pre', 'pre field for command {}'.format(name), False, str)
+            post = get_from_dict(data, 'post', 'pre field for command {}'.format(name), False, str)
             return WtsrcProjectModel.Command(name, pre, post)
 
 
         def log(self):
-            log.print("name: {}".format(self.name))
+            log.print("name: {}".format(self.name), color='cyan')
             log.increase_indent(" -")
             log.print("pre:  {}".format(self.pre_action))
             log.print("post: {}".format(self.post_action))

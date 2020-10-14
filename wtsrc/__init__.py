@@ -2,31 +2,41 @@ import click
 import os
 import pexpect
 import subprocess
+import shutil
+import sys
 import wtsrc.WtsrcLogger as log
 from termcolor import colored
 from wtsrc.version import __version__
 from wtsrc.WtsrcGlobalModel import WtsrcGlobalModel
 from wtsrc.WtsrcProjectModel import WtsrcProjectModel
-from wtsrc.WtsrcUtils import chdir_to_manifest_dir, chdir_to_repo, find_tsrc_root, obj_dump
+from wtsrc.WtsrcUtils import chdir_to_manifest_dir, chdir_to_repo, chdir_to_proj_root, obj_dump
 
 
 # some commands cannot have a pre/post action
 # for instance the init cannot have a pre action because the manifest isn't cloned yet
 # and the alias related commands cannot have any actions because they be called from anywhere (the model might not exist)
-pre_action_not_allowed = ['init', 'add-alias', 'remove-alias']
-post_action_not_allowed = ['add-alias', 'remove-alias']
+pre_action_not_allowed = ['init', 'delete-tsrc', 'add-alias', 'remove-alias', 'show']
+post_action_not_allowed = ['add-alias', 'delete-tsrc', 'remove-alias', 'show']
 
 
-def run_command(command):
+def run_command(command, as_sub_process=False):
     '''Executes a command on the command line and shows the results and returns the exit code'''
 
     log.print("Running Command: ", nl=False)
     log.print(command, 'green')
 
-    process = pexpect.spawn(command)
-    process.interact()
-    process.close()
-    return process.exitstatus
+    if sys.platform.lower().startswith('win') or as_sub_process:
+        p = subprocess.Popen(command.split(' '), env=os.environ, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        while(True):
+            print(p.stdout.readline().decode("utf-8"), end="")
+            if(p.poll() is not None):
+                break
+        return p.returncode
+    else:
+        process = pexpect.spawn(command)
+        process.interact()
+        process.close()
+        return process.exitstatus
 
 
 def perhaps_run_action(action, heading):
@@ -184,19 +194,25 @@ def foreach(c:str):
 def forsingle(repo_path:str, c:str, sp):
     """Will run -c 'CMD_TEXT' for the specified repo"""
     chdir_to_repo(repo_path, overide_manifest=True)
-    if not sp:
-        run_command(c)
-    else:
-        subprocess.run(c.split(" "))
+    run_command(c, sp)
+
+
+@run.command()
+def sync():
+    """Direct wrapper for tsrc sync - will pull in latest for all repos"""
+    cmd = "tsrc sync"
+    run_command(cmd)
 
 
 @run.command()
 def show():
-    '''Prints the saved model'''
+    '''Prints the global alias model and if available the project model'''
     gmodel = WtsrcGlobalModel.load()
+    log.print("Global Model:", color="green")
     log.print(str(gmodel))
 
     pmodel = WtsrcProjectModel.load()
+    log.print("Project Model:", color="green")
     pmodel.log()
 
 
@@ -225,8 +241,7 @@ def status(repo_path:str):
 def tig(repo_path:str):
     '''Runs tig for the specified repo'''
     chdir_to_repo(repo_path, overide_manifest=True)
-    # don't use run_command - tig doesn't dismount cleanly
-    subprocess.run(["tig"])
+    run_command("tig", as_sub_process=True) # don't use run_command - tig doesn't dismount cleanly
 
 
 @run.command()
@@ -242,6 +257,16 @@ def reset(repo_path:str):
     """Discards/resets all uncommitted changes  - 'all'"""
     cmd = "tsrc foreach -- git reset --hard HEAD"
     run_command(cmd)
+
+@run.command()
+def delete_tsrc():
+    """Deletes the .tsrc directory - should be used if your init has an invalid branch and you wan to clean up - this is a dangerous command"""
+    chdir_to_proj_root()
+    shutil.rmtree(".tsrc")
+    if os.path.exists(".tsrc"):
+        log.fatal("Failed to delete .tsrc")
+    else:
+        log.print("Deleted .tsrc", color='green')
 
 
 @run.command()

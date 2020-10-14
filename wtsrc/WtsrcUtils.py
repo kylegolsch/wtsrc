@@ -63,6 +63,14 @@ def obj_dump(obj, name='obj'):
     print("%s.%s = %r" % (name, attr, getattr(obj, attr)))
 
 
+def chdir_to_proj_root():
+    # find the workspace root and change directories to that
+    root = find_tsrc_root()
+    if not root:
+        log.fatal("Cannot change to project root: you must call from within a tsrc directory")
+    os.chdir(root)
+
+
 def chdir_to_repo(repo_path, overide_manifest=True):
     '''Tries to change to the repo directory'''
 
@@ -73,7 +81,7 @@ def chdir_to_repo(repo_path, overide_manifest=True):
     # find the workspace root and change directories to that
     root = find_tsrc_root()
     if not root:
-        log.fatal("You must call from within a tsrc directory")
+        log.fatal("Cannot change to repo: you must call from within a tsrc directory")
     os.chdir(root)
 
     # override the path if needed
@@ -94,6 +102,6 @@ def chdir_to_manifest_dir():
 
     manifest_dir = find_manifest_directory()
     if not manifest_dir:
-        log.fatal("You must call from within a tsrc directory")
+        log.fatal("Cannot change to manifest: you must call from within a tsrc directory")
 
     os.chdir(manifest_dir)
