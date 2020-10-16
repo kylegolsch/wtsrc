@@ -15,8 +15,23 @@ from wtsrc.WtsrcUtils import chdir_to_manifest_dir, chdir_to_repo, chdir_to_proj
 # some commands cannot have a pre/post action
 # for instance the init cannot have a pre action because the manifest isn't cloned yet
 # and the alias related commands cannot have any actions because they be called from anywhere (the model might not exist)
-pre_action_not_allowed = ['init', 'delete-tsrc', 'add-alias', 'remove-alias', 'show']
-post_action_not_allowed = ['add-alias', 'delete-tsrc', 'remove-alias', 'show']
+pre_action_not_allowed = ['add-alias', 'delete-tsrc', 'init', 'ls-remote', 'remove-alias', 'show']
+post_action_not_allowed = ['add-alias', 'delete-tsrc', 'ls-remote', 'remove-alias', 'show']
+
+
+def choose_alias_or_url(alias, url):
+    """use for commands that can choose an alias or url option"""
+    if alias and url:
+        log.fatal("You cannot pass both an alias and a url, choose one option or the other")
+    elif alias:
+        model = WtsrcGlobalModel.load()
+        manifest_url = model.get_alias_url(alias)
+        if(manifest_url == None):
+            log.fatal("The alias '{}' is not known".format(alias))
+    else:
+        manifest_url = url
+    
+    return manifest_url
 
 
 def run_command(command, as_sub_process=False):
@@ -98,17 +113,7 @@ def post_command(ctx, result, **kwargs):
 def init(alias:str, url:str, branch:str, group:str, s):
     '''Clone the manifest and all repos'''
 
-    manifest_url = None
-    if alias and url:
-        log.fatal("You cannot pass both an alias and a url, choose one option or the other")
-    elif alias:
-        model = WtsrcGlobalModel.load()
-        manifest_url = model.get_alias_url(alias)
-        if(manifest_url == None):
-            log.fatal("The alias '{}' is not known".format(alias))
-    else:
-        manifest_url = url
-
+    manifest_url = choose_alias_or_url(alias, url)
     cmd = "tsrc init {r}{b}{u}{s}".format(r=manifest_url,
                                           b=" --branch {}".format(branch) if branch else "",
                                           u=" --group {}".format(group) if group else "",
@@ -234,6 +239,16 @@ def status(repo_path:str):
         chdir_to_repo(repo_path, overide_manifest=True)
         cmd = "git status"
         run_command(cmd)
+
+
+@run.command()
+@click.option('--alias', type=str, default=None, required=False, help="the name of the alias to the manifest repo url")
+@click.option('--url', type=str, default=None, required=False, help="the url of the tsrc manifest repo")
+def ls_remote(alias, url):
+    """Shows the list of available branches that can be initialized"""
+    manifest_url = choose_alias_or_url(alias, url)
+    cmd = "git ls-remote {}".format(manifest_url)
+    run_command(cmd)
 
 
 @run.command()
