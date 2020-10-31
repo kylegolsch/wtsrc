@@ -1,8 +1,8 @@
 import os
+import shutil
+from wtsrc.WtsrcSettings import MANIFEST_DIRECTORY, TSRC_DIRECTORY
 import wtsrc.WtsrcLogger as log
 
-TSRC_DIRECTORY = ".tsrc"
-TSRC_MANIFEST_DIR = "manifest"
 
 def find_tsrc_directory():
     '''Tries to walk up the directory tree until the folder containing .tsrc directory is found'''
@@ -25,18 +25,7 @@ def find_tsrc_directory():
     return tsrc_dir
 
 
-def find_manifest_directory():
-    '''Tries to find the manifest directory or returns None'''
-
-    tsrc_dir = find_tsrc_directory()
-    if tsrc_dir:
-        file_path = os.path.join(tsrc_dir, TSRC_MANIFEST_DIR)
-        if os.path.exists(file_path):
-            return file_path
-    return None
-
-
-def find_tsrc_root():
+def find_project_root():
     '''Tries to walk up the director until the root of the tsrc workspace is found'''
 
     tsrc_dir = find_tsrc_directory()
@@ -47,15 +36,26 @@ def find_tsrc_root():
         return None
 
 
-def find_file_in_manifest_dir(file_name):
-    '''Tries to find the path to the specified file in the manifest directory'''
-
-    manifest_dir = find_manifest_directory()
-    if manifest_dir:
-        file_path = os.path.join(manifest_dir, file_name)
+def find_directory_in_project(proj_dir):
+    '''Tries the path in the project or returns None'''
+    path = None
+    root = find_project_root()
+    if root:
+        file_path = os.path.join(root, proj_dir)
         if os.path.exists(file_path):
-            return file_path
-    return None
+            path = file_path
+    return path
+
+
+def find_file_in_project(proj_dir, file_name):
+    '''Tries to find the path to a file in a directory relative to the project root'''
+    path = None
+    proj_dir_path = find_directory_in_project(proj_dir)
+    if proj_dir_path:
+        file_path = os.path.join(proj_dir_path, file_name)
+        if os.path.exists(file_path):
+            path = file_path
+    return path
 
 
 def obj_dump(obj, name='obj'):
@@ -65,7 +65,7 @@ def obj_dump(obj, name='obj'):
 
 def chdir_to_proj_root():
     # find the workspace root and change directories to that
-    root = find_tsrc_root()
+    root = find_project_root()
     if not root:
         log.fatal("Cannot change to project root: you must call from within a tsrc directory")
     os.chdir(root)
@@ -76,10 +76,10 @@ def chdir_to_repo(repo_path, overide_manifest=True):
 
     special_paths={}
     if(overide_manifest):
-        special_paths['manifest'] = os.path.join(TSRC_DIRECTORY, TSRC_MANIFEST_DIR)
+        special_paths['manifest'] = MANIFEST_DIRECTORY
 
     # find the workspace root and change directories to that
-    root = find_tsrc_root()
+    root = find_project_root()
     if not root:
         log.fatal("Cannot change to repo: you must call from within a tsrc directory")
     os.chdir(root)
@@ -97,11 +97,47 @@ def chdir_to_repo(repo_path, overide_manifest=True):
     os.chdir(repo_path)
 
 
+def chdir_to_proj_dir(proj_dir):
+    '''Tries to change directories to specified path'''
+
+    proj_dir_path = find_directory_in_project(proj_dir)
+    if not proj_dir_path:
+        log.fatal("Could not find the specified path {p}".format(p=proj_dir))
+
+    os.chdir(proj_dir_path)
+
+
+def find_manifest_directory():
+    return find_directory_in_project(MANIFEST_DIRECTORY)
+
+
+def find_file_in_manifest_dir(file_name):
+    return find_file_in_project(MANIFEST_DIRECTORY, file_name)
+
+
+def find_file_in_tsrc_dir(file_name):
+    return find_file_in_project(TSRC_DIRECTORY, file_name)
+
+
 def chdir_to_manifest_dir():
-    '''Tries to change directories to where the manifest file is located'''
+    chdir_to_proj_dir(MANIFEST_DIRECTORY)
 
-    manifest_dir = find_manifest_directory()
-    if not manifest_dir:
-        log.fatal("Cannot change to manifest: you must call from within a tsrc directory")
 
-    os.chdir(manifest_dir)
+def nuke_dir(dir_to_nuke):
+
+    if not os.path.exists(TSRC_DIRECTORY):
+        log.fatal("You must call from the root of the project for safety.  The .tsrc directory was not found in the cwd")
+
+    files = [f for f in os.listdir(dir_to_nuke) if os.path.isfile(os.path.join(dir_to_nuke, f))]
+    dirs = [d for d in os.listdir(dir_to_nuke) if os.path.isdir(os.path.join(dir_to_nuke, d))]
+    for file in files:
+        os.unlink(file)
+    for cur_dir in dirs:
+        shutil.rmtree(cur_dir)
+
+
+def nuke_root():
+    root = find_project_root()
+    if not root:
+        log.fatal("Could not find the project root")
+    nuke_dir(root)

@@ -1,10 +1,9 @@
 import yaml
 import wtsrc.WtsrcLogger as log
-from wtsrc.WtsrcSettings import WTSRC_FILE
+from wtsrc.WtsrcSettings import WTSRC_FILE, MANIFEST_DIRECTORY
 from wtsrc.WtsrcUtils import find_file_in_manifest_dir, find_manifest_directory, obj_dump
 
 def get_from_dict(dict, field, field_description, is_required, type=None):
-
     if field in dict:
         data = dict[field]
         if type and not isinstance(data, type):
@@ -13,7 +12,6 @@ def get_from_dict(dict, field, field_description, is_required, type=None):
         log.fatal(log.fatal("{0} is required, but not found".format(field_description)))
     else:
         data = None
-
     return data
 
 
@@ -178,7 +176,7 @@ class WtsrcProjectModel:
                     WtsrcProjectModel.instance = WtsrcProjectModel(yml_data)
             else:
                 manifest_dir = find_manifest_directory()
-                log.warning("The wtsrc project file could not be found at: {}".format(manifest_dir))
+                log.warning("The wtsrc project file could not be found at: {}".format(MANIFEST_DIRECTORY))
                 if not manifest_dir:
                     log.warning("You probably are not calling from within a tsrc project directory")
                 WtsrcProjectModel.instance = WtsrcProjectModel({'commands': {}, 'actions': {}})
